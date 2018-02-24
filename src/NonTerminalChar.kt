@@ -1,6 +1,12 @@
-class NonTerminalChar(val char: Char) : RegexPart, Comparable<NonTerminalChar> {
+class NonTerminalChar(val char: Char) : Comparable<NonTerminalChar>, SubstitutableRegexPart {
     override fun toString(): String {
         return char.toString()
+    }
+
+    override fun substitute(generator: Generator): RegexPart {
+        if (this == generator.from)
+            return generator.to
+        return this
     }
 
     companion object {

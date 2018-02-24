@@ -1,5 +1,5 @@
-class RegexPartOptioned(val options: MutableSet<RegexPart>) : RegexPart {
-    constructor(regex1: RegexPart, regex2: RegexPart) : this(mutableListOf()) {
+class RegexPartOptioned(val options: MutableSet<RegexPart>) : SubstitutableRegexPart {
+    constructor(regex1: RegexPart, regex2: RegexPart) : this(mutableSetOf()) {
         if (regex1 is RegexPartOptioned && regex2 is RegexPartOptioned) {
             options.addAll(regex1.options)
             options.addAll(regex2.options)
@@ -23,6 +23,12 @@ class RegexPartOptioned(val options: MutableSet<RegexPart>) : RegexPart {
                 options.add(it)
             }
         }
+    }
+
+    override fun substitute(generator: Generator): RegexPart {
+        return RegexPartOptioned(options.map {
+            (it as? SubstitutableRegexPart)?.substitute(generator) ?: it
+        })
     }
 
     override fun contains(regexPart: RegexPart): Boolean {

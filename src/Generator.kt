@@ -71,6 +71,12 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
                     })
         }.toSet()
 
+    fun substitute(generator: Generator): Generator {
+        if (to is SubstitutableRegexPart)
+            return Generator(from, to.substitute(generator))
+        return this
+    }
+
     override fun toString(): String {
         return from.toString() + "->" + to.toString()
     }

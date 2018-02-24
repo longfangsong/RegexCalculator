@@ -1,4 +1,4 @@
-class RegexPartConcated(val list: MutableList<RegexPart>) : RegexPart {
+class RegexPartConcated(val list: MutableList<RegexPart>) : SubstitutableRegexPart {
     constructor(part1: RegexPart, part2: RegexPart) : this(mutableListOf<RegexPart>()) {
         if (part1 is RegexPartConcated && part2 is RegexPartConcated) {
             list.addAll(part1.list)
@@ -16,6 +16,13 @@ class RegexPartConcated(val list: MutableList<RegexPart>) : RegexPart {
     }
 
     constructor(l: Collection<RegexPart>) : this(l.toMutableList())
+
+    override fun substitute(generator: Generator): RegexPart {
+        if (last == generator.from) {
+            return init concat generator.to
+        }
+        return this
+    }
 
     override fun toString(): String {
         return list.joinToString(".") {
