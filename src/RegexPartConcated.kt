@@ -1,5 +1,10 @@
-class RegexPartConcated(val list: MutableList<RegexPart>) : SubstitutableRegexPart {
+/**
+ * 连接过的 RegexPart
+ * @property list 按顺序保存了每个连接上的 RegexPart
+ */
+class RegexPartConcated(private val list: MutableList<RegexPart>) : SubstitutableRegexPart {
     constructor(part1: RegexPart, part2: RegexPart) : this(mutableListOf<RegexPart>()) {
+        // "展平"嵌套的RegexPartConcated
         if (part1 is RegexPartConcated && part2 is RegexPartConcated) {
             list.addAll(part1.list)
             list.addAll(part2.list)
@@ -15,7 +20,16 @@ class RegexPartConcated(val list: MutableList<RegexPart>) : SubstitutableRegexPa
         }
     }
 
-    constructor(l: Collection<RegexPart>) : this(l.toMutableList())
+    constructor(l: Collection<RegexPart>) : this(mutableListOf()) {
+        l.forEach {
+            if (it is RegexPartConcated) {
+                // "展平"嵌套的RegexPartConcated
+                list.addAll(it.list)
+            } else {
+                list.add(it)
+            }
+        }
+    }
 
     override fun substitute(generator: Generator): RegexPart {
         if (last == generator.from) {
@@ -31,20 +45,30 @@ class RegexPartConcated(val list: MutableList<RegexPart>) : SubstitutableRegexPa
         }
     }
 
-    override fun contains(regexPart: RegexPart): Boolean {
-        return list.any { regexPart in it }
+    override fun contains(nonTerminalChar: NonTerminalChar): Boolean {
+        return list.any { nonTerminalChar in it }
     }
 
+    override fun contains(terminalChar: TerminalChar): Boolean {
+        return list.any { terminalChar in it }
+    }
+
+    /**
+     * 判断是否符合正规文法的要求
+     */
     val isRegular: Boolean
         get() = list.size == 2 && list[0] is TerminalChar && list[1] is NonTerminalChar
 
+    /**
+     * 仿haskell列表操作的一些 property
+     */
     val head: RegexPart
         get() = list.first()
     val tail: RegexPart
         get() = if (list.size == 2) {
             list[1]
         } else {
-            RegexPartConcated(list.drop(1).toMutableList())
+            RegexPartConcated(list.drop(1))
         }
     val last: RegexPart
         get() = list.last()
@@ -52,6 +76,6 @@ class RegexPartConcated(val list: MutableList<RegexPart>) : SubstitutableRegexPa
         get() = if (list.size == 2) {
             list[0]
         } else {
-            RegexPartConcated(list.dropLast(1).toMutableList())
+            RegexPartConcated(list.dropLast(1))
         }
 }

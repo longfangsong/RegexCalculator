@@ -1,12 +1,20 @@
-class RegexPartRepeated(var toRepeat: RegexPart) : RegexPart {
-    init {
-        if (toRepeat is RegexPartRepeated) {
-            this.toRepeat = (toRepeat as RegexPartRepeated).toRepeat
-        }
+/**
+ * 某个RegexPart的星闭包
+ */
+class RegexPartRepeated(partToRepeat: RegexPart) : RegexPart {
+    val toRepeat: RegexPart = if (partToRepeat is RegexPartRepeated) {
+        // 运用幂等律
+        partToRepeat.toRepeat
+    } else {
+        partToRepeat
     }
 
-    override fun contains(regexPart: RegexPart): Boolean {
-        return regexPart in toRepeat
+    override fun contains(nonTerminalChar: NonTerminalChar): Boolean {
+        return nonTerminalChar in toRepeat
+    }
+
+    override fun contains(terminalChar: TerminalChar): Boolean {
+        return terminalChar in toRepeat
     }
 
     override fun toString(): String {
@@ -16,5 +24,4 @@ class RegexPartRepeated(var toRepeat: RegexPart) : RegexPart {
             "$toRepeat*"
         }
     }
-
 }

@@ -1,3 +1,6 @@
+/**
+ * 正规文法
+ */
 class Grammar(
         val nonTerminals: Set<NonTerminalChar>,
         val terminals: Set<TerminalChar>,
@@ -6,7 +9,7 @@ class Grammar(
 ) {
     constructor(rles: Collection<Generator>) : this(
             rles.map { it.from }.toSet(),
-            ('a'..'z').map { TerminalChar(it) }.toSet().union(('0'..'9').map { TerminalChar(it) }),
+            ('a'..'z').map { TerminalChar(it) }.toSet() + (('0'..'9').map { TerminalChar(it) }),
             rles.toSet(),
             rles.minBy { it.from }!!.from
     )
@@ -15,6 +18,10 @@ class Grammar(
             Generator(NonTerminalChar.next(), regexPart).regulized
     )
 
+    /**
+     * 简化过的 rules
+     * 简化规则同 Generator
+     */
     val simplifiedRules: Set<Generator>
         get() = rules.groupBy { it.from }.map {
             Generator(it.key,
@@ -25,6 +32,11 @@ class Grammar(
                     })
         }.toSet()
 
+    /**
+     * 简化一个Generator
+     * 即将一个左侧包含右侧的Generator（如 A->aA, B->a|bA|bB）
+     * 化简为左侧不含右侧的Generator（如A->a*, B->b*a|b*bA）
+     */
     private fun simplify(generator: Generator): Generator {
         val from = generator.from
         val to = generator.to
@@ -43,10 +55,16 @@ class Grammar(
         }
     }
 
+    /**
+     * simplify一系列 Generator
+     */
     private fun simplify(mutableSet: Collection<Generator>): MutableSet<Generator> {
         return mutableSet.map { simplify(it) }.toMutableSet()
     }
 
+    /**
+     * 将文法转化到正则表达式
+     */
     fun toRegex(): RegexPart {
         var theSet = simplifiedRules.toMutableSet()
         theSet = simplify(theSet)

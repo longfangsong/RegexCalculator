@@ -1,3 +1,6 @@
+/**
+ * 推导式
+ */
 class Generator(val from: NonTerminalChar, val to: RegexPart) {
     private val isDirectDelegate: Boolean
         get() = to is NonTerminalChar
@@ -6,6 +9,9 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
         return nonTerminalChar in to
     }
 
+    /**
+     * 与这个推导式等价的，包含直接推导到另外一个非终结符（如 A->B ）的正规化推导式集合
+     */
     private val regulizedWithDirectDelegate: Set<Generator>
         get() {
             when (to) {
@@ -16,12 +22,14 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
                     }
                     val last = to.last
                     if (last is NonTerminalChar) {
+                        // 即形如 A->...B 的推导式
+                        // 此时应该针对最后一个字符之前的所有字符处理
                         val init = to.init
                         when (init) {
                             is RegexPartConcated -> {
-                                val nextTerminal = NonTerminalChar.next()
-                                return Generator(from, init.head concat nextTerminal).regulizedWithDirectDelegate +
-                                        Generator(nextTerminal, init.tail concat last).regulizedWithDirectDelegate
+                                val nextNonTerminal = NonTerminalChar.next()
+                                return Generator(from, init.head concat nextNonTerminal).regulizedWithDirectDelegate +
+                                        Generator(nextNonTerminal, init.tail concat last).regulizedWithDirectDelegate
                             }
                             is RegexPartOptioned -> {
                                 return init.options.map { Generator(from, it concat last).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
@@ -44,23 +52,45 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
             return setOf()
         }
 
+    /**
+     * 消除直接推导到另外一个非终结符（如 A->B ）的推导式
+     */
+    private fun eliminateDirectDelegate(): MutableSet<Generator> {
+        val withDirectDelegate = regulizedWithDirectDelegate.toMutableSet()
+        while (withDirectDelegate.any { it.isDirectDelegate }) {
+            val nextDirectDelegate = withDirectDelegate.first { it.isDirectDelegate }
+            withDirectDelegate.remove(nextDirectDelegate)
+            val delegateFrom = nextDirectDelegate.from
+            val delegateTo = withDirectDelegate.filter { it.from == nextDirectDelegate.to }
+            withDirectDelegate.addAll(delegateTo.map { Generator(delegateFrom, it.to) })
+        }
+        return withDirectDelegate
+    }
+
+    /**
+     * 移除不被其他推导式使用的推导式
+     */
+    private fun removeUselessGenerator(eliminated: MutableSet<Generator>): Set<Generator> {
+        val usedCount = mutableMapOf<NonTerminalChar, Int>()
+        for (ele in eliminated) {
+            usedCount[ele.from] = eliminated.count { ele.from in it }
+        }
+        return eliminated.filter { usedCount[it.from] != 0 || it.from == eliminated.minBy { it.from }?.from }.toSet()
+    }
+
+    /**
+     * 真正的正规化推导式集合
+     */
     val regulized: Set<Generator>
         get() {
-            val withDirectDelegate = regulizedWithDirectDelegate.toMutableSet()
-            while (withDirectDelegate.any { it.isDirectDelegate }) {
-                val nextDirectDelegate = withDirectDelegate.first { it.isDirectDelegate }
-                withDirectDelegate.remove(nextDirectDelegate)
-                val delegateFrom = nextDirectDelegate.from
-                val delegateTo = withDirectDelegate.filter { it.from == nextDirectDelegate.to }
-                withDirectDelegate.addAll(delegateTo.map { Generator(delegateFrom, it.to) })
-            }
-            val usedCount = mutableMapOf<NonTerminalChar, Int>()
-            for (ele in withDirectDelegate) {
-                usedCount[ele.from] = withDirectDelegate.count { ele.from in it }
-            }
-            return withDirectDelegate.filter { usedCount[it.from] != 0 || it.from == withDirectDelegate.minBy { it.from }?.from }.toSet()
+            val eliminated = eliminateDirectDelegate()
+            return removeUselessGenerator(eliminated)
         }
 
+    /**
+     * 简化过的正规化推导式集合
+     * 即将A->aB, A->bB 变为A->aB|bB
+     */
     val simplfiedRegulized: Set<Generator>
         get() = regulized.groupBy { it.from }.map {
             Generator(it.key,
