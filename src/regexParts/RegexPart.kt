@@ -1,3 +1,11 @@
+package regexParts
+
+import eraseUselessBracketPairs
+import firstLayerContain
+import isRegexOperator
+import pairedRightBracketIndex
+import splitFirstLayerBy
+
 /**
  * 所有正则表达式中的元素都要实现的接口
  */
@@ -7,7 +15,7 @@ interface RegexPart {
      */
     infix fun concat(other: RegexPart): RegexPart {
         if (this is RegexPartOptioned && other is RegexPartOptioned) {
-            // 两个 RegexPartOptioned 连接，要运用分配律
+            // 两个 regexParts.RegexPartOptioned 连接，要运用分配律
             // (a|b).(c|d) == ac | ad | bc | bd
             return RegexPartOptioned(this.options.map { thisOption ->
                 RegexPartOptioned(other.options.map { otherOption ->
@@ -15,12 +23,12 @@ interface RegexPart {
                 })
             })
         } else if (this is RegexPartOptioned) {
-            // 当前是 RegexPartOptioned ，分配律
+            // 当前是 regexParts.RegexPartOptioned ，分配律
             return RegexPartOptioned(this.options.map { thisOption ->
                 thisOption concat other
             })
         } else if (other is RegexPartOptioned) {
-            // other 是 RegexPartOptioned ，分配律
+            // other 是 regexParts.RegexPartOptioned ，分配律
             return RegexPartOptioned(other.options.map { otherOption ->
                 this concat otherOption
             })

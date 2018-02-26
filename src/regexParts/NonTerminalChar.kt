@@ -1,3 +1,7 @@
+package regexParts
+
+import grammar.Generator
+
 /**
  * 非终结符，一般用于表示一个正则表达式的一部分。
  */
@@ -54,8 +58,8 @@ class NonTerminalChar(private val char: Char) : Comparable<NonTerminalChar>, Sub
     }
 
     /**
-     * 一个通过 NonTerminalChar 和 RegexPart 来构造 Generator 的快捷方式
-     * 构造出形如 NonTerminalChar -> RegexPart 的 Generator
+     * 一个通过 regexParts.NonTerminalChar 和 regexParts.RegexPart 来构造 grammar.Generator 的快捷方式
+     * 构造出形如 regexParts.NonTerminalChar -> regexParts.RegexPart 的 grammar.Generator
      */
     infix fun to(regexPart: RegexPart): Generator {
         return Generator(this, regexPart)

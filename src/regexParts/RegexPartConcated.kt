@@ -1,6 +1,10 @@
+package regexParts
+
+import grammar.Generator
+
 /**
- * 连接过的 RegexPart
- * @property list 按顺序保存了每个连接上的 RegexPart
+ * 连接过的 regexParts.RegexPart
+ * @property list 按顺序保存了每个连接上的 regexParts.RegexPart
  */
 class RegexPartConcated(private val list: MutableList<RegexPart>) : SubstitutableRegexPart {
     constructor(part1: RegexPart, part2: RegexPart) : this(mutableListOf<RegexPart>()) {

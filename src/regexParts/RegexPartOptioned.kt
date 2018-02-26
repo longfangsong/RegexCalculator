@@ -1,3 +1,7 @@
+package regexParts
+
+import grammar.Generator
+
 /**
  * RegexPart间 或 运算的结果
  */

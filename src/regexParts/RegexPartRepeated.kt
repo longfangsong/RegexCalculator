@@ -1,3 +1,5 @@
+package regexParts
+
 /**
  * 某个RegexPart的星闭包
  */

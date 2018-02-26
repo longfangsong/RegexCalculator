@@ -1,3 +1,8 @@
+package grammar
+
+import finiteAutomatas.NondeterministicFiniteAutomata
+import regexParts.*
+
 /**
  * 正规文法
  */
@@ -75,5 +80,25 @@ class Grammar(
             theSet = simplify(theSet)
         }
         return theSet.first().to
+    }
+
+    fun toNFA(): NondeterministicFiniteAutomata {
+        val accepedState = NondeterministicFiniteAutomata.State("AC", true)
+        val states = rules.map { NondeterministicFiniteAutomata.State(it.from.toString()) }.toSet() + setOf(accepedState)
+        val start = states.find { it.name == start.toString() }!!
+        rules.forEach {
+            val from = it.from
+            val theState = states.find { it.name == from.toString() }
+            if (it.to is TerminalChar) {
+                val transitionRoute = it.to
+                theState?.addTransition(transitionRoute, accepedState)
+            } else if (it.to is RegexPartConcated) {
+                val transitionRoute = it.to.head as TerminalChar
+                val nextStateName = it.to.tail.toString()
+                val to = states.find { it.name == nextStateName }
+                theState?.addTransition(transitionRoute, to!!)
+            }
+        }
+        return NondeterministicFiniteAutomata(states, start)
     }
 }

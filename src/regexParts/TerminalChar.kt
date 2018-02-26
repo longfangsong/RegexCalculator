@@ -1,3 +1,5 @@
+package regexParts
+
 class TerminalChar(val char: Char) : RegexPart {
     override fun toString(): String {
         return char.toString()
