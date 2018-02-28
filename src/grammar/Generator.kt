@@ -16,10 +16,9 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
     /**
      * 与这个推导式等价的，包含直接推导到另外一个非终结符（如 A->B ）的正规化推导式集合
      */
-    private val regulizedWithDirectDelegate: Set<Generator>
+    val regulizedWithDirectDelegate: Set<Generator>
         get() {
             when (to) {
-                is NonTerminalChar, is TerminalChar -> return setOf(this)
                 is RegexPartConcated -> {
                     if (to.isRegular) {
                         return setOf(this)
@@ -29,18 +28,19 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
                         // 即形如 A->...B 的推导式
                         // 此时应该针对最后一个字符之前的所有字符处理
                         val init = to.init
-                        when (init) {
+                        return when (init) {
                             is RegexPartConcated -> {
                                 val nextNonTerminal = NonTerminalChar.next()
-                                return Generator(from, init.head concat nextNonTerminal).regulizedWithDirectDelegate +
+                                Generator(from, init.head concat nextNonTerminal).regulizedWithDirectDelegate +
                                         Generator(nextNonTerminal, init.tail concat last).regulizedWithDirectDelegate
                             }
                             is RegexPartOptioned -> {
-                                return init.options.map { Generator(from, it concat last).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
+                                init.options.map { Generator(from, it concat last).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
                             }
                             is RegexPartRepeated -> {
-                                return Generator(from, init.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, last).regulizedWithDirectDelegate
+                                Generator(from, init.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, last).regulizedWithDirectDelegate
                             }
+                            else -> throw Exception("Should not enter this")
                         }
                     }
                     val nextTerminal = NonTerminalChar.next()
@@ -50,10 +50,10 @@ class Generator(val from: NonTerminalChar, val to: RegexPart) {
                     return to.options.map { Generator(from, it).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
                 }
                 is RegexPartRepeated -> {
-                    return Generator(from, to.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, to.toRepeat).regulizedWithDirectDelegate
+                    return Generator(from, to.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, RegexPartNullChar).regulizedWithDirectDelegate
                 }
             }
-            return setOf()
+            return setOf(this)
         }
 
     /**

@@ -1,6 +1,7 @@
 package finiteAutomatas
 
 import regexParts.TerminalChar
+import java.util.*
 
 class NondeterministicFiniteAutomata(
         val states: Set<NondeterministicFiniteAutomata.State>,
@@ -49,6 +50,43 @@ class NondeterministicFiniteAutomata(
         override fun hashCode(): Int {
             return name.hashCode()
         }
+
+        override fun toString(): String {
+            return "State(name='$name')"
+        }
+
+        val nullClosure: Set<NondeterministicFiniteAutomata.State> = (transitions[null]?.toSet()
+                ?: setOf()) + setOf(this)
+
+    }
+
+    val alphabet = states.map { it.transitions.map { it.key }.toSet() }.reduce { it1, it2 -> it1 + it2 }.toSet()
+
+    val Set<NondeterministicFiniteAutomata.State>.nullClosure: Set<NondeterministicFiniteAutomata.State>
+        get() {
+            val s = Stack<NondeterministicFiniteAutomata.State>()
+            val result = this.toMutableSet()
+            while (!s.empty()) {
+                val t = s.pop()
+                for (connectedState in t.nullClosure) {
+                    if (connectedState !in result) {
+                        result += connectedState
+                        s.push(connectedState)
+                    }
+                }
+            }
+            return result
+        }
+
+    fun Set<NondeterministicFiniteAutomata.State>.directConnectedTo(withChar: TerminalChar?): Set<NondeterministicFiniteAutomata.State> {
+        val temp = this.map {
+            it.transitions[withChar]?.toSet() ?: setOf()
+        }
+        return if (temp.isEmpty()) setOf() else temp.reduce { it1, it2 -> it1 + it2 }.toSet()
+    }
+
+    fun Set<NondeterministicFiniteAutomata.State>.equivalenteStates(): Set<NondeterministicFiniteAutomata.State> {
+        return this.map { it.nullClosure }.reduce { it1, it2 -> it1 + it2 }.toSet()
     }
 
     override val graph: String
@@ -70,5 +108,31 @@ digraph G {
             }
             }
 }"""
+        }
+
+    val DFA: DeterministicFiniteAutomata
+        get() {
+            val statesToFind = mutableSetOf(start.nullClosure)
+            val alphabetBuffer = alphabet
+            val result = mutableMapOf<Set<NondeterministicFiniteAutomata.State>, DeterministicFiniteAutomata.State>()
+            var nextChar = 'A'
+            result[start.nullClosure] = DeterministicFiniteAutomata.State(nextChar++.toString(), mutableMapOf(), start.nullClosure.any { it.acceptable })
+            while (!statesToFind.isEmpty()) {
+                val theStates = statesToFind.first()
+                statesToFind.remove(theStates)
+//                println("Now doing $theStates, $statesToFind remain\n")
+                for (ch in alphabetBuffer) {
+                    val canGoTo = theStates.directConnectedTo(ch)
+                    val equivalenteStates = canGoTo.nullClosure
+//                    println("$theStates + $ch = $canGoTo => $equivalenteStates\n")
+                    if (equivalenteStates !in result.keys) {
+                        result[equivalenteStates] = DeterministicFiniteAutomata.State(nextChar++.toString(), mutableMapOf(), equivalenteStates.any { it.acceptable })
+                        statesToFind.add(equivalenteStates)
+//                        println("For $equivalenteStates create new state ${result[equivalenteStates]?.name}\n")
+                    }
+                    result[theStates]!!.transitions[ch!!] = result[equivalenteStates]!!
+                }
+            }
+            return DeterministicFiniteAutomata(result.values.toSet(), result.values.minBy { it.name }!!)
         }
 }

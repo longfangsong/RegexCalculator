@@ -1,10 +1,6 @@
 package regexParts
 
-import eraseUselessBracketPairs
-import firstLayerContain
-import isRegexOperator
-import pairedRightBracketIndex
-import splitFirstLayerBy
+import tools.*
 
 /**
  * 所有正则表达式中的元素都要实现的接口
@@ -14,6 +10,12 @@ interface RegexPart {
      * 连接运算
      */
     infix fun concat(other: RegexPart): RegexPart {
+        if (other == RegexPartNullChar) {
+            return this
+        }
+        if (this == RegexPartNullChar) {
+            return other
+        }
         if (this is RegexPartOptioned && other is RegexPartOptioned) {
             // 两个 regexParts.RegexPartOptioned 连接，要运用分配律
             // (a|b).(c|d) == ac | ad | bc | bd
@@ -41,6 +43,12 @@ interface RegexPart {
      * 或运算
      */
     infix fun or(other: RegexPart): RegexPart {
+        if (other == RegexPartNullChar) {
+            return this
+        }
+        if (this == RegexPartNullChar) {
+            return other
+        }
         return RegexPartOptioned(this, other)
     }
 
@@ -48,6 +56,9 @@ interface RegexPart {
      * 重复（取星闭包）运算
      */
     fun repeat(): RegexPart {
+        if (this == RegexPartNullChar) {
+            return this
+        }
         return RegexPartRepeated(this)
     }
 
@@ -83,12 +94,12 @@ interface RegexPart {
             return when {
                 string.startsWith('(') && pairedRightBracketIndex(string) == string.length - 1 -> fromPreprocessedString(eraseUselessBracketPairs(string))
                 string.length == 1 -> TerminalChar(string[0])
-                string.firstLayerContain('|') -> RegexPartOptioned(string.splitFirstLayerBy('|').map { fromPreprocessedString(it) })
-                string.firstLayerContain('.') -> RegexPartConcated(string.splitFirstLayerBy('.').map { fromPreprocessedString(it) })
+                string.firstLayerContain('|') -> string.splitFirstLayerBy('|').map { fromPreprocessedString(it) }.reduce { acc, regexPart -> acc or regexPart }
+                string.firstLayerContain('.') -> string.splitFirstLayerBy('.').map { fromPreprocessedString(it) }.reduce { acc, regexPart -> acc concat regexPart }
                 string.endsWith('*') -> if (string.startsWith('(')) {
-                    RegexPartRepeated(fromPreprocessedString(string.slice(1 until string.length - 2)))
+                    fromPreprocessedString(string.slice(1 until string.length - 2)).repeat()
                 } else {
-                    RegexPartRepeated(fromPreprocessedString(string.slice(0 until string.length - 1)))
+                    fromPreprocessedString(string.slice(0 until string.length - 1)).repeat()
                 }
                 else -> {
                     throw IllegalArgumentException("Can not construct from string $string")

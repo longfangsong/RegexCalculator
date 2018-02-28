@@ -89,14 +89,18 @@ class Grammar(
         rules.forEach {
             val from = it.from
             val theState = states.find { it.name == from.toString() }
-            if (it.to is TerminalChar) {
-                val transitionRoute = it.to
-                theState?.addTransition(transitionRoute, accepedState)
-            } else if (it.to is RegexPartConcated) {
-                val transitionRoute = it.to.head as TerminalChar
-                val nextStateName = it.to.tail.toString()
-                val to = states.find { it.name == nextStateName }
-                theState?.addTransition(transitionRoute, to!!)
+            when {
+                it.to is TerminalChar -> {
+                    val transitionRoute = it.to
+                    theState?.addTransition(transitionRoute, accepedState)
+                }
+                it.to is RegexPartConcated -> {
+                    val transitionRoute = it.to.head as TerminalChar
+                    val nextStateName = it.to.tail.toString()
+                    val to = states.find { it.name == nextStateName }
+                    theState?.addTransition(transitionRoute, to!!)
+                }
+                it.to == RegexPartNullChar -> theState?.acceptable = true
             }
         }
         return NondeterministicFiniteAutomata(states, start)
