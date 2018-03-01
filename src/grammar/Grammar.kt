@@ -1,41 +1,33 @@
 package grammar
 
-import finiteAutomatas.NondeterministicFiniteAutomata
-import regexParts.*
+import finiteAutomata.Nondeterministic
+import regex.*
 
-/**
- * 正规文法
- */
 class Grammar(
-        val nonTerminals: Set<NonTerminalChar>,
-        val terminals: Set<TerminalChar>,
+        val nonTerminals: Set<NonTerminalCharacter>,
+        val terminals: Set<TerminalCharacter>,
         val rules: Set<Generator>,
-        val start: NonTerminalChar
+        val start: NonTerminalCharacter
 ) {
     constructor(rles: Collection<Generator>) : this(
             rles.map { it.from }.toSet(),
-            ('a'..'z').map { TerminalChar(it) }.toSet() + (('0'..'9').map { TerminalChar(it) }),
+            rles.map { it.alphabet }.reduce { acc, set -> acc + set },
             rles.toSet(),
             rles.minBy { it.from }!!.from
     )
 
-    constructor(regexPart: RegexPart) : this(
-            Generator(NonTerminalChar.next(), regexPart).regulized
+    constructor(regex: Regex) : this(
+            (NonTerminalCharacter.next() to regex).regulized
     )
 
-    /**
-     * 简化过的 rules
-     * 简化规则同 Generator
-     */
-    val simplifiedRules: Set<Generator>
-        get() = rules.groupBy { it.from }.map {
-            Generator(it.key,
-                    if (it.value.size == 1) {
-                        it.value.first().to
-                    } else {
-                        RegexPartOptioned(it.value.map { it.to })
-                    })
-        }.toSet()
+    val simplifiedRules = rules.groupBy { it.from }.map {
+        Generator(it.key,
+                if (it.value.size == 1) {
+                    it.value.first().to
+                } else {
+                    Optioned(it.value.map { it.to })
+                })
+    }.toSet()
 
     /**
      * 简化一个Generator
@@ -47,11 +39,11 @@ class Grammar(
         val to = generator.to
         return if (from in to) {
             when (to) {
-                is RegexPartConcated -> simplify(Generator(from, to.init.repeat()))
-                is RegexPartOptioned -> {
-                    val firstItem = to.options.find { generator.from in it } as RegexPartConcated
+                is Concated -> simplify(Generator(from, to.init.repeat()))
+                is Optioned -> {
+                    val firstItem = to.components.find { generator.from in it } as Concated
                     simplify(Generator(from, firstItem.init.repeat() concat
-                            RegexPartOptioned(to.options.filter { it != firstItem })))
+                            Optioned(to.components.filter { it != firstItem })))
                 }
                 else -> throw NotImplementedError()
             }
@@ -70,39 +62,39 @@ class Grammar(
     /**
      * 将文法转化到正则表达式
      */
-    fun toRegex(): RegexPart {
+    fun toRegex(): Regex {
         var theSet = simplifiedRules.toMutableSet()
         theSet = simplify(theSet)
         while (theSet.size > 1) {
             val nextGeneratorToKill = theSet.findLast { it.from != start }
             theSet.remove(nextGeneratorToKill)
-            theSet = theSet.map { it.substitute(nextGeneratorToKill!!) }.toMutableSet()
+            theSet = theSet.map { it.substituteWith(nextGeneratorToKill!!) }.toMutableSet()
             theSet = simplify(theSet)
         }
-        return theSet.first().to
+        return Regex(theSet.first().to)
     }
 
-    fun toNFA(): NondeterministicFiniteAutomata {
-        val accepedState = NondeterministicFiniteAutomata.State("AC", true)
-        val states = rules.map { NondeterministicFiniteAutomata.State(it.from.toString()) }.toSet() + setOf(accepedState)
+    fun toNFA(): Nondeterministic {
+        val accepedState = Nondeterministic.State("AC", true)
+        val states = rules.map { Nondeterministic.State(it.from.toString()) }.toSet() + setOf(accepedState)
         val start = states.find { it.name == start.toString() }!!
         rules.forEach {
             val from = it.from
             val theState = states.find { it.name == from.toString() }
             when {
-                it.to is TerminalChar -> {
+                it.to is TerminalCharacter -> {
                     val transitionRoute = it.to
                     theState?.addTransition(transitionRoute, accepedState)
                 }
-                it.to is RegexPartConcated -> {
-                    val transitionRoute = it.to.head as TerminalChar
+                it.to is Concated -> {
+                    val transitionRoute = it.to.head as TerminalCharacter
                     val nextStateName = it.to.tail.toString()
                     val to = states.find { it.name == nextStateName }
                     theState?.addTransition(transitionRoute, to!!)
                 }
-                it.to == RegexPartNullChar -> theState?.acceptable = true
+                it.to == nullCharacter -> theState?.addTransition(nullCharacter, accepedState)
             }
         }
-        return NondeterministicFiniteAutomata(states, start)
+        return Nondeterministic(states, start)
     }
 }

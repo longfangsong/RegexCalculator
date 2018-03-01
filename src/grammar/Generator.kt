@@ -1,127 +1,136 @@
 package grammar
 
-import regexParts.*
+import regex.*
 
-/**
- * 推导式
- */
-class Generator(val from: NonTerminalChar, val to: RegexPart) {
-    private val isDirectDelegate: Boolean
-        get() = to is NonTerminalChar
-
-    private operator fun contains(nonTerminalChar: NonTerminalChar): Boolean {
-        return nonTerminalChar in to
-    }
-
-    /**
-     * 与这个推导式等价的，包含直接推导到另外一个非终结符（如 A->B ）的正规化推导式集合
-     */
-    val regulizedWithDirectDelegate: Set<Generator>
-        get() {
-            when (to) {
-                is RegexPartConcated -> {
-                    if (to.isRegular) {
-                        return setOf(this)
-                    }
-                    val last = to.last
-                    if (last is NonTerminalChar) {
-                        // 即形如 A->...B 的推导式
-                        // 此时应该针对最后一个字符之前的所有字符处理
-                        val init = to.init
-                        return when (init) {
-                            is RegexPartConcated -> {
-                                val nextNonTerminal = NonTerminalChar.next()
-                                Generator(from, init.head concat nextNonTerminal).regulizedWithDirectDelegate +
-                                        Generator(nextNonTerminal, init.tail concat last).regulizedWithDirectDelegate
-                            }
-                            is RegexPartOptioned -> {
-                                init.options.map { Generator(from, it concat last).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
-                            }
-                            is RegexPartRepeated -> {
-                                Generator(from, init.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, last).regulizedWithDirectDelegate
-                            }
-                            else -> throw Exception("Should not enter this")
-                        }
-                    }
-                    val nextTerminal = NonTerminalChar.next()
-                    return Generator(from, to.head concat nextTerminal).regulizedWithDirectDelegate + Generator(nextTerminal, to.tail).regulizedWithDirectDelegate
-                }
-                is RegexPartOptioned -> {
-                    return to.options.map { Generator(from, it).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
-                }
-                is RegexPartRepeated -> {
-                    return Generator(from, to.toRepeat concat from).regulizedWithDirectDelegate + Generator(from, RegexPartNullChar).regulizedWithDirectDelegate
-                }
-            }
-            return setOf(this)
-        }
-
-    /**
-     * 消除直接推导到另外一个非终结符（如 A->B ）的推导式
-     */
-    private fun eliminateDirectDelegate(): MutableSet<Generator> {
-        val withDirectDelegate = regulizedWithDirectDelegate.toMutableSet()
-        while (withDirectDelegate.any { it.isDirectDelegate }) {
-            val nextDirectDelegate = withDirectDelegate.first { it.isDirectDelegate }
-            withDirectDelegate.remove(nextDirectDelegate)
-            val delegateFrom = nextDirectDelegate.from
-            val delegateTo = withDirectDelegate.filter { it.from == nextDirectDelegate.to }
-            withDirectDelegate.addAll(delegateTo.map { Generator(delegateFrom, it.to) })
-        }
-        return withDirectDelegate
-    }
-
-    /**
-     * 移除不被其他推导式使用的推导式
-     */
-    private fun removeUselessGenerator(eliminated: MutableSet<Generator>): Set<Generator> {
-        val usedCount = mutableMapOf<NonTerminalChar, Int>()
-        for (ele in eliminated) {
-            usedCount[ele.from] = eliminated.count { ele.from in it }
-        }
-        return eliminated.filter { usedCount[it.from] != 0 || it.from == eliminated.minBy { it.from }?.from }.toSet()
-    }
-
-    /**
-     * 真正的正规化推导式集合
-     */
-    val regulized: Set<Generator>
-        get() {
-            val eliminated = eliminateDirectDelegate()
-            return removeUselessGenerator(eliminated)
-        }
-
-    /**
-     * 简化过的正规化推导式集合
-     * 即将A->aB, A->bB 变为A->aB|bB
-     */
-    val simplfiedRegulized: Set<Generator>
-        get() = regulized.groupBy { it.from }.map {
-            Generator(it.key,
-                    if (it.value.size == 1) {
-                        it.value.first().to
-                    } else {
-                        RegexPartOptioned(it.value.map { it.to })
-                    })
-        }.toSet()
-
-    fun substitute(generator: Generator): Generator {
-        if (to is SubstitutableRegexPart)
-            return Generator(from, to.substitute(generator))
-        return this
-    }
-
+class Generator(
+        val from: NonTerminalCharacter,
+        val to: RegexComponent
+) {
     override fun toString(): String {
-        return from.toString() + "->" + to.toString()
+        return "$from->$to"
     }
 
     override fun equals(other: Any?): Boolean {
-        return other is Generator && from == other.from && to == other.to
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Generator
+
+        if (from != other.from) return false
+        if (to != other.to) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
         var result = from.hashCode()
         result = 31 * result + to.hashCode()
         return result
+    }
+
+    val isDirectDelegate = to is NonTerminalCharacter
+
+    /**
+     * 与这个推导式等价的，包含直接推导到另外一个非终结符（如 A->B ）的正规化推导式集合
+     */
+    val regulizedWithDirectDelegate: Set<Generator> =
+            when (to) {
+                is Concated -> {
+                    if (to.isRegular) {
+                        setOf(this)
+                    } else {
+                        val last = to.last
+                        if (last is NonTerminalCharacter) {
+                            endWithOtherNonTerminalRegulized(to, last)
+                        } else {
+                            // A->abc
+                            // A->aB, B->bc
+                            val nextTerminal = NonTerminalCharacter.next()
+                            (from to (to.head concat nextTerminal)).regulizedWithDirectDelegate + (nextTerminal to to.tail).regulizedWithDirectDelegate
+
+                        }
+                    }
+                }
+                is Optioned -> {
+                    // A->a|b
+                    // => A->a, A->b
+                    to.components.map { (from to it).regulizedWithDirectDelegate }.reduce { acc, set -> acc + set }
+                }
+                is Repeated -> {
+                    // A->a*
+                    // A->aA, A->ε
+                    (from to (to.toRepeat concat from)).regulizedWithDirectDelegate + (from to nullCharacter).regulizedWithDirectDelegate
+                }
+                else -> setOf(this)
+            }
+
+    /**
+     * 消除直接推导到另外一个非终结符（如 A->B ）的推导式
+     */
+    private fun eliminateDirectDelegate(items: Set<Generator>): MutableSet<Generator> {
+        val result = items.toMutableSet()
+        while (result.any { it.isDirectDelegate }) {
+            val nextDirectDelegate = result.first { it.isDirectDelegate }
+            result.remove(nextDirectDelegate)
+            val delegateFrom = nextDirectDelegate.from
+            val delegateTo = result.filter { it.from == nextDirectDelegate.to }
+            result.addAll(delegateTo.map { Generator(delegateFrom, it.to) })
+        }
+        return result
+    }
+
+    /**
+     * 移除不被其他推导式使用的推导式
+     */
+    private fun removeUselessGenerator(eliminated: MutableSet<Generator>): Set<Generator> {
+        val usedCount = mutableMapOf<NonTerminalCharacter, Int>()
+        for (ele in eliminated) {
+            usedCount[ele.from] = eliminated.count { ele.from in it }
+        }
+        return eliminated.filter { usedCount[it.from] != 0 || it.from == eliminated.minBy { it.from }?.from }.toSet()
+    }
+
+    private operator fun contains(item: NonTerminalCharacter): Boolean {
+        return item in to
+    }
+
+    /**
+     * 真正的正规化推导式集合
+     */
+    val regulized: Set<Generator> = removeUselessGenerator(eliminateDirectDelegate(regulizedWithDirectDelegate))
+
+    private fun endWithOtherNonTerminalRegulized(to: Concated, last: NonTerminalCharacter): Set<Generator> {
+        // 形如 A->...B 的推导式
+        // 此时应该针对最后一个字符之前的所有字符处理
+        val init = to.init
+        return when (init) {
+            is Concated -> {
+                // A->abB
+                // => A->aC, C->bB
+                val nextNonTerminal = NonTerminalCharacter.next()
+                (from to (init.head concat nextNonTerminal)).regulizedWithDirectDelegate +
+                        (nextNonTerminal to (init.tail concat last)).regulizedWithDirectDelegate
+            }
+            is Optioned -> {
+                // | 的运算律应该会保证这一个分支不会被执行到
+                // 出于完整性与保险起见保留
+                // A->(a|b)B
+                // => A->aB, A->bB
+                init.components.map { (from to (it concat last)).regulizedWithDirectDelegate }.reduce { it1, it2 -> it1 + it2 }
+            }
+            is Repeated -> {
+                // A->a*B
+                // A->aA, A->B
+                (from to (init.toRepeat concat from)).regulizedWithDirectDelegate + (from to last).regulizedWithDirectDelegate
+            }
+            else -> {
+                throw UnknownError("Should never execute this!")
+            }
+        }
+    }
+
+    val alphabet = to.alphabet
+    fun substituteWith(nextGeneratorToKill: Generator): Generator {
+        return from to to.substituteWith(nextGeneratorToKill)
     }
 }
