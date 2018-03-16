@@ -1,8 +1,10 @@
 package finiteAutomata.unitTest
 
 import finiteAutomata.Deterministic
-import org.junit.jupiter.api.Assertions.assertEquals
+import grammar.Grammar
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import regex.Regex
 import regex.TerminalCharacter
 
 internal class DeterministicTest {
@@ -25,5 +27,21 @@ internal class DeterministicTest {
                 "A->A [label=b];\n" +
                 "B->B [label=a];\n" +
                 "B->A [label=b];}", theDFA.graph)
+    }
+
+    @Test
+    fun match() {
+        val theDFA = Grammar(Regex("1(1010*|1(010)*1)*0"))
+                .toNFA()
+                .toDFA()
+                .minimized
+        assertTrue(theDFA.match("10"))
+        assertTrue(theDFA.match("110100"))
+        assertTrue(theDFA.match("11010000000"))
+        assertTrue(theDFA.match("11010"))
+        assertTrue(theDFA.match("1101001010"))
+        assertFalse(theDFA.match("1"))
+        assertFalse(theDFA.match("0"))
+        assertFalse(theDFA.match("10100"))
     }
 }
