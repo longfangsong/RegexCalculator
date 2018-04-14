@@ -3,9 +3,9 @@ package grammar.unitTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import regex.NonTerminalCharacter
+import regex.NullCharacter
 import regex.Regex
 import regex.TerminalCharacter
-import regex.nullCharacter
 
 internal class GeneratorTest {
 
@@ -25,7 +25,7 @@ internal class GeneratorTest {
         NonTerminalCharacter.reset()
         excepted = setOf(
                 NonTerminalCharacter("A") to (TerminalCharacter("a") concat NonTerminalCharacter("A")),
-                NonTerminalCharacter("A") to nullCharacter)
+                NonTerminalCharacter("A") to NullCharacter)
         assertEquals(excepted, (NonTerminalCharacter.next() to Regex("a*")).regulizedWithDirectDelegate)
         NonTerminalCharacter.reset()
         excepted = setOf(

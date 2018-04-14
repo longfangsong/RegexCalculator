@@ -4,7 +4,7 @@ import tools.*
 
 object RegexComponentFactory {
     fun concated(component1: RegexComponent, component2: RegexComponent): RegexComponent {
-        return if (component2 == nullCharacter) {
+        return if (component2 == NullCharacter) {
             component1
         } else if (component1 is Optioned && component2 is Optioned) {
             Optioned(
@@ -50,7 +50,7 @@ object RegexComponentFactory {
         return component as? Repeated ?: Repeated(component)
     }
 
-    private fun preprocess(str: String): String {
+    private fun addOmittedDotOperator(str: String): String {
         val theString = StringBuilder()
         for ((index, ch) in str.withIndex()) {
             theString.append(ch)
@@ -65,23 +65,27 @@ object RegexComponentFactory {
         return theString.toString()
     }
 
-    private fun fromPreprocessedString(string: String): RegexComponent {
+    private fun fromFormalString(string: String): RegexComponent {
         if (string == "")
-            return nullCharacter
+            return NullCharacter
         try {
             return when {
-                string.startsWith('(') && pairedRightBracketIndex(string) == string.length - 1 -> fromPreprocessedString(eraseUselessBracketPairs(string))
-                string.length == 1 -> TerminalCharacter(string)
-                string.firstLayerContain('|') -> string.splitFirstLayerBy('|').map { fromPreprocessedString(it) }.reduce { acc, regexPart -> acc or regexPart }
-                string.firstLayerContain('.') -> string.splitFirstLayerBy('.').map { fromPreprocessedString(it) }.reduce { acc, regexPart -> acc concat regexPart }
-                string.endsWith('*') -> if (string.startsWith('(')) {
-                    fromPreprocessedString(string.slice(1 until string.length - 2)).repeat()
-                } else {
-                    fromPreprocessedString(string.slice(0 until string.length - 1)).repeat()
-                }
-                else -> {
+                string.startsWith('(') && pairedRightBracketIndex(string) == string.length - 1 ->
+                    fromFormalString(eraseUselessBracketPairs(string))
+                string.length == 1 ->
+                    TerminalCharacter(string)
+                string.firstLayerContain('|') ->
+                    string.splitFirstLayerBy('|').map { fromFormalString(it) }.reduce { acc, regexPart -> acc or regexPart }
+                string.firstLayerContain('.') ->
+                    string.splitFirstLayerBy('.').map { fromFormalString(it) }.reduce { acc, regexPart -> acc concat regexPart }
+                string.endsWith('*') ->
+                    if (string.startsWith('(')) {
+                        fromFormalString(string.slice(1 until string.length - 2)).repeat()
+                    } else {
+                        fromFormalString(string.slice(0 until string.length - 1)).repeat()
+                    }
+                else ->
                     throw IllegalArgumentException("Can not construct from string $string")
-                }
             }
         } catch (_: StringIndexOutOfBoundsException) {
             throw IllegalArgumentException("Can not construct from string $string")
@@ -94,6 +98,6 @@ object RegexComponentFactory {
      * 从字符串中构造 RegexComponent
      */
     fun fromString(string: String): RegexComponent {
-        return fromPreprocessedString(preprocess(string))
+        return fromFormalString(addOmittedDotOperator(string))
     }
 }

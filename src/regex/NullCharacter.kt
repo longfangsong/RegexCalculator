@@ -2,7 +2,7 @@ package regex
 
 import grammar.Generator
 
-object nullCharacter : TerminalCharacter("ε") {
+object NullCharacter : TerminalCharacter("ε") {
     override fun equals(other: Any?): Boolean {
         return other === this
     }

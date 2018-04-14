@@ -3,30 +3,30 @@ package regex.unitTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
+import regex.NullCharacter
 import regex.TerminalCharacter
-import regex.nullCharacter
 
 internal class NullCharacterTest {
 
     @Test
     fun concat() {
         val a = TerminalCharacter("a")
-        assertEquals(a, a concat nullCharacter)
-        assertEquals(a, nullCharacter concat a)
-        assertEquals(nullCharacter, nullCharacter concat nullCharacter)
+        assertEquals(a, a concat NullCharacter)
+        assertEquals(a, NullCharacter concat a)
+        assertEquals(NullCharacter, NullCharacter concat NullCharacter)
     }
 
     @Test
     fun or() {
         val a = TerminalCharacter("a")
-        assertNotEquals(a, a or nullCharacter)
-        assertNotEquals(a, nullCharacter or a)
-        assertEquals(nullCharacter, nullCharacter or nullCharacter)
-        assertEquals(nullCharacter or a or nullCharacter, nullCharacter or a)
+        assertNotEquals(a, a or NullCharacter)
+        assertNotEquals(a, NullCharacter or a)
+        assertEquals(NullCharacter, NullCharacter or NullCharacter)
+        assertEquals(NullCharacter or a or NullCharacter, NullCharacter or a)
     }
 
     @Test
     fun repeat() {
-        assertEquals(nullCharacter, nullCharacter.repeat())
+        assertEquals(NullCharacter, NullCharacter.repeat())
     }
 }

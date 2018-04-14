@@ -1,14 +1,14 @@
 package finiteAutomata
 
+import regex.NullCharacter
 import regex.TerminalCharacter
-import regex.nullCharacter
 
 class Nondeterministic(states: Set<Nondeterministic.State>,
                        start: Nondeterministic.State) : Automata(states, start) {
     class State(name: String, accept: Boolean = false, val transitions: MutableMap<TerminalCharacter, MutableSet<State>> = mutableMapOf()) : Automata.State(name, accept) {
         override fun addTransition(transitionRoute: TerminalCharacter, to: Automata.State) {
             to as Nondeterministic.State
-            if (transitionRoute == nullCharacter && to == this)
+            if (transitionRoute == NullCharacter && to == this)
                 return
             if (transitions[transitionRoute] == null)
                 transitions[transitionRoute] = mutableSetOf()
@@ -16,7 +16,7 @@ class Nondeterministic(states: Set<Nondeterministic.State>,
         }
 
         fun equivalentStates(alreadyKnown: Set<Nondeterministic.State> = setOf()): Set<Nondeterministic.State> {
-            val directedConnectedTo = transitions[nullCharacter]?.filter { it != this && it !in alreadyKnown }
+            val directedConnectedTo = transitions[NullCharacter]?.filter { it != this && it !in alreadyKnown }
             val directedConnectedToEquStates = directedConnectedTo?.map { it.equivalentStates(alreadyKnown + this) }?.reduce { acc, set -> acc + set }
             return alreadyKnown + this + (directedConnectedToEquStates ?: setOf())
         }

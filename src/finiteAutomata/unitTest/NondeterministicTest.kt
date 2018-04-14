@@ -2,8 +2,8 @@ package finiteAutomata.unitTest
 
 import finiteAutomata.Nondeterministic
 import org.junit.jupiter.api.Test
+import regex.NullCharacter
 import regex.TerminalCharacter
-import regex.nullCharacter
 import kotlin.test.assertEquals
 
 internal class NondeterministicTest {
@@ -15,7 +15,7 @@ internal class NondeterministicTest {
         val stateB = Nondeterministic.State("B")
         stateA.transitions[a] = mutableSetOf(stateB, stateA)
         stateA.transitions[b] = mutableSetOf(stateA)
-        stateA.transitions[nullCharacter] = mutableSetOf(stateA, stateB)
+        stateA.transitions[NullCharacter] = mutableSetOf(stateA, stateB)
         stateB.transitions[a] = mutableSetOf(stateB)
         stateB.transitions[b] = mutableSetOf(stateA, stateB)
         val theNFA = Nondeterministic(setOf(stateA, stateB), stateA)
@@ -42,10 +42,10 @@ internal class NondeterministicTest {
         val stateC = Nondeterministic.State("B")
         val stateD = Nondeterministic.State("B")
         val stateE = Nondeterministic.State("B")
-        stateA.transitions[nullCharacter] = mutableSetOf(stateB)
+        stateA.transitions[NullCharacter] = mutableSetOf(stateB)
         stateA.transitions[a] = mutableSetOf(stateE)
-        stateB.transitions[nullCharacter] = mutableSetOf(stateC)
-        stateC.transitions[nullCharacter] = mutableSetOf(stateA, stateD)
+        stateB.transitions[NullCharacter] = mutableSetOf(stateC)
+        stateC.transitions[NullCharacter] = mutableSetOf(stateA, stateD)
         stateE.transitions[a] = mutableSetOf(stateD)
         stateE.transitions[b] = mutableSetOf(stateC)
         assertEquals(setOf(stateA, stateB, stateC, stateD), stateA.equivalentStates())

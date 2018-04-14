@@ -92,7 +92,7 @@ class Grammar(
                     val to = states.find { it.name == nextStateName }
                     theState?.addTransition(transitionRoute, to!!)
                 }
-                it.to == nullCharacter -> theState?.addTransition(nullCharacter, accepedState)
+                it.to == NullCharacter -> theState?.addTransition(NullCharacter, accepedState)
             }
         }
         return Nondeterministic(states, start)

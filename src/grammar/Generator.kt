@@ -28,7 +28,7 @@ class Generator(
         return result
     }
 
-    val isDirectDelegate = to is NonTerminalCharacter
+    private val isDirectDelegate = to is NonTerminalCharacter
 
     /**
      * 与这个推导式等价的，包含直接推导到另外一个非终结符（如 A->B ）的正规化推导式集合
@@ -59,7 +59,7 @@ class Generator(
                 is Repeated -> {
                     // A->a*
                     // A->aA, A->ε
-                    (from to (to.toRepeat concat from)).regulizedWithDirectDelegate + (from to nullCharacter).regulizedWithDirectDelegate
+                    (from to (to.toRepeat concat from)).regulizedWithDirectDelegate + (from to NullCharacter).regulizedWithDirectDelegate
                 }
                 else -> setOf(this)
             }

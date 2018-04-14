@@ -17,7 +17,7 @@ internal class RegexComponentFactoryTest {
         assertTrue(RegexComponentFactory.fromString("a*|bc") is Optioned)
         assertTrue(RegexComponentFactory.fromString("a*bc") is Concated)
         assertTrue(RegexComponentFactory.fromString("(abc)*") is Repeated)
-        assertTrue(RegexComponentFactory.fromString("") === nullCharacter)
+        assertTrue(RegexComponentFactory.fromString("") === NullCharacter)
         assertFailsWith(IllegalArgumentException::class, { RegexComponentFactory.fromString("(ab") })
     }
 
