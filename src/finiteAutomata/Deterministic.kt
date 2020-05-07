@@ -1,5 +1,6 @@
 package finiteAutomata
 
+import regex.NullCharacter
 import regex.TerminalCharacter
 
 class Deterministic(states: Set<Deterministic.State>,
@@ -17,13 +18,32 @@ class Deterministic(states: Set<Deterministic.State>,
     override fun transitionGraph(): String {
         return states.joinToString("\n") { state ->
             state as Deterministic.State
-            state.transitions.map { transition ->
-                Companion.graph(state, transition.value, transition.key)
-            }.joinToString("\n")
+            state.transitions
+                    .filter { it.key != NullCharacter }
+                    .map { transition ->
+                        Companion.graph(state, transition.value, transition.key)
+                    }.joinToString("\n")
         }
     }
 
     val alphabet: Set<TerminalCharacter> = states.first().transitions.keys
+
+    val removeUnreachable: Deterministic
+        get() {
+            val reachable = mutableSetOf(start)
+            val pending = mutableSetOf(start)
+            while (pending.isNotEmpty()) {
+                val check = pending.first() as Deterministic.State
+                for (t in check.transitions) {
+                    if (t.key != NullCharacter && !reachable.contains(t.value)) {
+                        reachable.add(t.value)
+                        pending.add(t.value)
+                    }
+                }
+                pending.remove(check)
+            }
+            return Deterministic(reachable.map { it as Deterministic.State }.toSet(), start as State)
+        }
 
     val minimized: Deterministic
         get() {
@@ -57,7 +77,7 @@ class Deterministic(states: Set<Deterministic.State>,
                     state.transitions[ch] = stateGroups.find { toState in it }!!.first() as Deterministic.State
                 }
             }
-            return Deterministic(newStates.map { it as Deterministic.State }.toSet(), stateGroups.find { start in it }!!.first() as Deterministic.State)
+            return Deterministic(newStates.map { it as Deterministic.State }.toSet(), stateGroups.find { start in it }!!.first() as Deterministic.State).removeUnreachable
         }
 
     fun match(string: String): Boolean {
